@@ -6,7 +6,7 @@ import torchsparse
 import torch.nn as nn
 import torchsparse.nn as spnn
 import torchsparse.nn.functional as spf
-from torchsparse import PointTensor
+from torchsparse.tensor import PointTensor
 from core.models.utils import *
 
 __all__ = ['SPVCNN']

@@ -23,10 +23,10 @@ class LOGG3D(nn.Module):
         _, counts = torch.unique(x.C[:, -1], return_counts=True)
 
         x = self.spvcnn(x)
-        y = torch.split(x, list(counts))
-        x = torch.nn.utils.rnn.pad_sequence(list(y)).permute(1, 0, 2)
+        # y = torch.split(x, list(counts))
+        # x = torch.nn.utils.rnn.pad_sequence(list(y)).permute(1, 0, 2)
         x = self.sop(x)
-        return x, y[:2]
+        return x
 
 
 if __name__ == '__main__':

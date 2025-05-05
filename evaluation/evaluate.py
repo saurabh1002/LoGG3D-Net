@@ -46,8 +46,4 @@ if __name__ == "__main__":
     logging.info(
         '\n' + '******************* Evaluation Complete *******************')
     logging.info('Checkpoint Name: ' + str(cfg.checkpoint_name))
-    if 'Kitti' in cfg.eval_dataset:
-        logging.info('Evaluated Sequence: ' + str(cfg.kitti_eval_seq))
-    elif 'MulRan' in cfg.eval_dataset:
-        logging.info('Evaluated Sequence: ' + str(cfg.mulran_eval_seq))
-    logging.info('F1 Max: ' + str(eval_F1_max))
+    logging.info('Evaluated Sequence: ' + str(cfg.mulran_eval_seq))
