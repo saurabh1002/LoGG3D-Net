@@ -52,7 +52,7 @@ def evaluate_sequence_reg(model, dataset, cfg):
             query_idx, nearest_idx, dataset.local_maps_scan_range
         )
         if map_query - map_ref > 3:
-            closures_list.append([map_ref, map_query])
+            closures_list.append((map_ref, map_query))
             distances_list.append(min_dist)
 
     return seen_descriptors, closures_list, distances_list
