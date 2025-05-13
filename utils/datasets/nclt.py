@@ -32,26 +32,32 @@ class NCLTDataset:
 
     def __init__(self, data_dir: Path, *_, **__):
         self.sequence_id = os.path.basename(data_dir)
-        self.data_dir = os.path.join(os.path.realpath(data_dir), "")
-        self.scans_dir = os.path.join(self.data_dir, "velodyne_sync")
+        self.sequence_dir = os.path.join(os.path.realpath(data_dir), "")
+        self.scans_dir = os.path.join(self.sequence_dir, "velodyne_sync")
         scan_files = np.array(sorted(os.listdir(str(self.scans_dir))), dtype=str)
         poses_file = os.path.realpath(
             os.path.join(
-                self.data_dir,
+                self.sequence_dir,
                 "..",
                 f"ground_truth/groundtruth_{self.sequence_id}.csv",
             )
         )
         gt_data = np.loadtxt(poses_file, delimiter=",")
-        self.timestamps, timestamp_filter = self.load_valid_timestamps(gt_data, scan_files)
+        self.timestamps, timestamp_filter = self.load_valid_timestamps(
+            gt_data, scan_files
+        )
         self.scan_files = scan_files[timestamp_filter]
 
         try:
             self.gt_closure_indices = np.loadtxt(
-                os.path.join(self.data_dir, "loop_closure", "local_map_gt_closures.txt")
+                os.path.join(
+                    self.sequence_dir, "loop_closure", "local_map_gt_closures.txt"
+                )
             )
             self.local_maps_scan_range = np.load(
-                os.path.join(self.data_dir, "MapClosures", "local_maps_scan_index_range.npy")
+                os.path.join(
+                    self.sequence_dir, "MapClosures", "local_maps_scan_index_range.npy"
+                )
             )
         except FileNotFoundError:
             self.gt_closure_indices = None
@@ -91,7 +97,8 @@ class NCLTDataset:
         gt_t = gt_data[:, 0]
         # Limit the sequence to timestamps for which a ground truth exists
         timestamps = np.array(
-            [os.path.basename(file).split(".")[0] for file in scan_files], dtype=np.int64
+            [os.path.basename(file).split(".")[0] for file in scan_files],
+            dtype=np.int64,
         )
         filter_ = (timestamps > np.min(gt_t)) * (timestamps < np.max(gt_t))
         return timestamps[filter_], filter_

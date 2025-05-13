@@ -29,9 +29,12 @@ data_arg.add_argument('--voxel_size', type=float, default=0.10)
 data_arg.add_argument('--eval_feature_distance', type=str,
                       default='cosine')  # cosine#euclidean
 
-data_arg.add_argument('--dataloader', type=str, required=True, help="Dataloader name")
-data_arg.add_argument('--data_dir', type=Path, required=True, help="Path to the dataset")
-data_arg.add_argument('--sequence', type=str, default=None, help="Sequence Name")
+data_arg.add_argument('--dataloader_ref', type=str, required=True, help="Dataloader name")
+data_arg.add_argument('--data_dir_ref', type=Path, required=True, help="Path to the dataset")
+data_arg.add_argument('--sequence_ref', type=str, default=None, help="Sequence Name")
+data_arg.add_argument('--dataloader_query', type=str, required=True, help="Dataloader name")
+data_arg.add_argument('--data_dir_query', type=Path, required=True, help="Path to the dataset")
+data_arg.add_argument('--sequence_query', type=str, default=None, help="Sequence Name")
 data_arg.add_argument('--results_dir', type=Path, required=True, help="Path to the results directory")
 
 def get_config_eval():
