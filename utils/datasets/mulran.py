@@ -55,4 +55,4 @@ class MulranDataset:
 
     def read_point_cloud(self, file_path: str):
         points = np.fromfile(file_path, dtype=np.float32).reshape((-1, 4))[:, :4]
-        return points.astype(np.float64)
+        return points[:, :3].astype(np.float64)

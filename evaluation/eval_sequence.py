@@ -2,7 +2,6 @@ from scipy.spatial.distance import cdist
 import os
 import sys
 import numpy as np
-import math
 from tqdm.auto import trange
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))

@@ -1,8 +1,6 @@
-import datetime
 import os
 import sys
 import torch
-import pickle
 import numpy as np
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
@@ -19,7 +17,7 @@ def create_results_dir(cfg, dataset_query, dataset_ref):
         else os.path.basename(dataset_query.data_dir)
     )
     ref_dataset_name = (
-        dataset_refsequence_id
+        dataset_ref.sequence_id
         if hasattr(dataset_ref, "sequence_id")
         else os.path.basename(dataset_ref.data_dir)
     )
@@ -57,7 +55,7 @@ if __name__ == "__main__":
     from utils.datasets import dataset_factory
 
     cfg = get_config_eval()
-
+    
     # Get model
     model = LOGG3D(feature_dim=16)
 
@@ -74,15 +72,30 @@ if __name__ == "__main__":
     model.eval()
 
     dataset_ref = dataset_factory(
-        dataloader=cfg.dataloader_query,
-        data_dir=cfg.data_dir_query,
-        sequence=cfg.sequence_query,
+        dataloader=cfg.dataloader_ref,
+        data_dir=cfg.data_dir_ref,
+        sequence=cfg.sequence_ref,
     )
     dataset_query = dataset_factory(
         dataloader=cfg.dataloader_query,
         data_dir=cfg.data_dir_query,
         sequence=cfg.sequence_query,
     )
+
+    base_dir_query = dataset_query.sequence_dir
+    file_path_closures_query = os.path.join(
+        base_dir_query,
+        "loop_closure",
+        f"{dataset_ref.sequence_id}_local_map_gt_closures.txt",
+    )
+    if os.path.exists(file_path_closures_query):
+        gt_closures = np.loadtxt(file_path_closures_query, dtype=int)
+        gt_closures = set(map(lambda x: tuple(x), gt_closures))
+
+        print(f"[INFO] Found closure ground truth at {file_path_closures_query}")
+    else:
+        gt_closures = None
+        print(f"[INFO] No closure ground truth found at {file_path_closures_query}")
 
     closures_list, distances_list = evaluate_sequence_reg(
         model, dataset_ref, dataset_query, cfg
@@ -95,7 +108,6 @@ if __name__ == "__main__":
     )
 
     metrics = []
-    gt_closures = set(map(lambda x: tuple(sorted(x)), dataset.gt_closure_indices))
     for threshold in thresholds:
         closures = set()
         for closure_indices, distance in zip(closures_list, distances_list):
