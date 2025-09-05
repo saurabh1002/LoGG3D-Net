@@ -9,23 +9,10 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 from models.pipelines.pipeline_utils import make_sparse_tensor
 
 
-def scan_to_map(
-    scan_query, scan_ref, query_local_maps_scan_range, ref_local_maps_scan_range
+def evaluate_sequence_reg(
+    model, dataset_ref, dataset_query, ref_map_indices, query_map_indices, cfg
 ):
-    map_query = np.where(
-        (scan_query >= query_local_maps_scan_range[:, 0])
-        & (scan_query < query_local_maps_scan_range[:, 1])
-    )[0][0]
-    map_ref = np.where(
-        (scan_ref >= ref_local_maps_scan_range[:, 0])
-        & (scan_ref < ref_local_maps_scan_range[:, 1])
-    )[0][0]
-    return map_query, map_ref
-
-
-def evaluate_sequence_reg(model, dataset_ref, dataset_query, cfg):
-    closures_list = []
-    distances_list = []
+    closures = {}
 
     # Databases of previously visited/'seen' places.
     ref_descriptors_file = os.path.join(
@@ -46,15 +33,11 @@ def evaluate_sequence_reg(model, dataset_ref, dataset_query, cfg):
         feat_dists = cdist(
             global_descriptor, db_descriptors, metric=cfg.eval_feature_distance
         ).reshape(-1)
-        min_dist, ref_idx = np.min(feat_dists), np.argmin(feat_dists)
+        candidate_indices = np.where(feat_dists <= cfg.cd_thresh_max)[0]
+        map_refs = ref_map_indices[candidate_indices]
+        distances = feat_dists[candidate_indices]
 
-        map_query, map_ref = scan_to_map(
-            query_idx,
-            ref_idx,
-            dataset_query.local_maps_scan_range,
-            dataset_ref.local_maps_scan_range,
-        )
-        closures_list.append((map_ref, map_query))
-        distances_list.append(min_dist)
+        if len(candidate_indices) > 0:
+            closures[query_map_indices[query_idx]] = (map_refs, distances)
 
-    return closures_list, distances_list
+    return closures

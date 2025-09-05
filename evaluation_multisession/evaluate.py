@@ -4,7 +4,6 @@ import torch
 import numpy as np
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
-from evaluation_multisession.eval_sequence import evaluate_sequence_reg
 from rich import box
 from rich.console import Console
 from rich.table import Table
@@ -26,6 +25,17 @@ def create_results_dir(cfg, dataset_query, dataset_ref):
     )
     os.makedirs(results_dir, exist_ok=True)
     return results_dir
+
+
+def scan_indices_to_map_indices(dataset_size, local_maps_scan_range):
+    start = local_maps_scan_range[:, 0][:, None]
+    end = local_maps_scan_range[:, 1][:, None]
+
+    scan_indices = np.arange(dataset_size)
+    ref_mask = (scan_indices >= start) & (scan_indices < end)
+    map_indices = np.argmax(ref_mask, axis=0).astype(np.uint16)
+    return map_indices
+
 
 class EvaluationMetrics:
     def __init__(self, true_positives, false_positives, false_negatives):
@@ -52,10 +62,11 @@ class EvaluationMetrics:
 if __name__ == "__main__":
     from models.pipelines.LOGG3D import LOGG3D
     from config.eval_config_multisession import get_config_eval
+    from evaluation_multisession.eval_sequence import evaluate_sequence_reg
     from utils.datasets import dataset_factory
 
     cfg = get_config_eval()
-    
+
     # Get model
     model = LOGG3D(feature_dim=16)
 
@@ -97,8 +108,15 @@ if __name__ == "__main__":
         gt_closures = None
         print(f"[INFO] No closure ground truth found at {file_path_closures_query}")
 
-    closures_list, distances_list = evaluate_sequence_reg(
-        model, dataset_ref, dataset_query, cfg
+    ref_map_indices = scan_indices_to_map_indices(
+        len(dataset_ref), dataset_ref.local_maps_scan_range
+    )
+    query_map_indices = scan_indices_to_map_indices(
+        len(dataset_query), dataset_query.local_maps_scan_range
+    )
+
+    candidate_closures = evaluate_sequence_reg(
+        model, dataset_ref, dataset_query, ref_map_indices, query_map_indices, cfg
     )
     results_dir = create_results_dir(cfg, dataset_query, dataset_ref)
 
@@ -110,10 +128,12 @@ if __name__ == "__main__":
     metrics = []
     for threshold in thresholds:
         closures = set()
-        for closure_indices, distance in zip(closures_list, distances_list):
-            if distance < threshold:
-                closures.add(closure_indices)
-
+        for target_id, (source_ids, distances) in candidate_closures.items():
+            mask = distances < threshold
+            if np.any(mask):
+                closures.update(
+                    (source_id, target_id) for source_id in source_ids[mask]
+                )
         tp = len(gt_closures.intersection(closures))
         fp = len(closures) - tp
         fn = len(gt_closures) - tp

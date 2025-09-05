@@ -39,6 +39,16 @@ def save_pickle(data_variable, file_name):
     dbfile2.close()
 
 
+def scan_indices_to_map_indices(dataset_size, local_maps_scan_range):
+    start = local_maps_scan_range[:, 0][:, None]
+    end = local_maps_scan_range[:, 1][:, None]
+
+    scan_indices = np.arange(dataset_size)
+    ref_mask = (scan_indices >= start) & (scan_indices < end)
+    map_indices = np.argmax(ref_mask, axis=0).astype(np.uint16)
+    return map_indices
+
+
 class EvaluationMetrics:
     def __init__(self, true_positives, false_positives, false_negatives):
         self.tp = true_positives
@@ -83,10 +93,16 @@ if __name__ == "__main__":
     model = model.cuda()
     model.eval()
 
-    dataset = dataset_factory(dataloader=cfg.dataloader, data_dir=cfg.data_dir, sequence=cfg.sequence)
+    dataset = dataset_factory(
+        dataloader=cfg.dataloader, data_dir=cfg.data_dir, sequence=cfg.sequence
+    )
 
-    descriptors, closures_list, distances_list = evaluate_sequence_reg(
-        model, dataset, cfg
+    map_indices = scan_indices_to_map_indices(
+        len(dataset), dataset.local_maps_scan_range
+    )
+
+    descriptors, candidate_closures = evaluate_sequence_reg(
+        model, dataset, map_indices, cfg
     )
     results_dir = create_results_dir(cfg, dataset)
     save_pickle(descriptors, os.path.join(results_dir, "descriptors.pkl"))
@@ -100,10 +116,12 @@ if __name__ == "__main__":
     gt_closures = set(map(lambda x: tuple(sorted(x)), dataset.gt_closure_indices))
     for threshold in thresholds:
         closures = set()
-        for closure_indices, distance in zip(closures_list, distances_list):
-            if distance < threshold:
-                closures.add(closure_indices)
-
+        for target_id, (source_ids, distances) in candidate_closures.items():
+            mask = distances < threshold
+            if np.any(mask):
+                closures.update(
+                    (source_id, target_id) for source_id in source_ids[mask]
+                )
         tp = len(gt_closures.intersection(closures))
         fp = len(closures) - tp
         fn = len(gt_closures) - tp
